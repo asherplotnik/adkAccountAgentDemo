@@ -53,7 +53,7 @@ public class AccountSummaryAndTransactionsFilteredToolService {
                     Integer numOfTransLimit) {
         BankAgentRequestContext requestContext = requestContextHolder.getOrThrow();
         log.info(
-                "Banking tool executing: get-account-summary-and-transactions-filtered fromDate={} toDate={} numOfTransLimit={} clientSessionId={} globalTransactionId={}",
+                "[TOOL][account-summary-transactions-filtered][START] fromDate={} toDate={} limit={} sessionId={} globalTxId={}",
                 fromDate,
                 toDate,
                 numOfTransLimit,
