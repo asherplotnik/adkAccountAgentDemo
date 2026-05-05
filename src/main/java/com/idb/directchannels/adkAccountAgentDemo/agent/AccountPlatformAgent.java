@@ -76,8 +76,8 @@ public final class AccountPlatformAgent {
                         ══════════════════════════════════════════════════════════════════════════════
                         get-account-summary-and-transactions-filtered
                           Parameters:
-                            - fromDate (string, YYYY-MM-DD, inclusive, optional; defaults to today)
-                            - toDate   (string, YYYY-MM-DD, inclusive, optional; defaults to today)
+                            - fromDate (string, YYYY-MM-DD, inclusive, optional; if both dates omitted defaults to current month start)
+                            - toDate   (string, YYYY-MM-DD, inclusive, optional; if both dates omitted defaults to today)
                             - numOfTransLimit (integer | null):
                                 * 0    → return summary only, no transactions
                                 * null → return all transactions (capped at 30)
@@ -101,12 +101,18 @@ public final class AccountPlatformAgent {
 
                         STEP 2 — RESOLVE PARAMETERS
                           Determine fromDate, toDate, numOfTransLimit.
-                          • For SUMMARY-ONLY: set numOfTransLimit = 0 and omit fromDate/toDate (tool defaults to today).
+                          • If SESSION_CONTEXT is present in the prompt, use its "today" value as the
+                            authoritative reference date for all relative date calculations.
+                          • For SUMMARY-ONLY: set numOfTransLimit = 0 and omit fromDate/toDate.
                           • For TRANSACTIONS/BOTH: resolve dates using:
+                            • If a date is provided without a year, assume the current year.
+                              If that month/day has not occurred yet this year, assume last year.
                             • "today"            → today..today
                             • "yesterday"        → yesterday..yesterday
                             • "this week"        → Monday of current week..today
                             • "last week"        → previous Monday..previous Sunday
+                            • "this year"        → Jan 1 of current year..today
+                            • "last year"        → Jan 1..Dec 31 of previous year
                             • "this month"       → 1st of current month..today
                             • "last month"       → 1st..last day of previous month
                             • "last N days"      → today-N+1..today
@@ -116,8 +122,14 @@ public final class AccountPlatformAgent {
 
                         STEP 3 — FILL THE GAPS
                           • Derive unambiguous parameters automatically; state the assumption in the reply.
-                          • Ask exactly ONE clarifying question only for TRANSACTIONS/BOTH when a date range
-                            is genuinely ambiguous and cannot be derived from context.
+                          • If TRANSACTIONS/BOTH is requested and no explicit date range is provided, do NOT ask for dates.
+                            Use current month start..today by default, then add:
+                            "If you want a specific date range, please provide fromDate and toDate (YYYY-MM-DD)."
+                          • If the caller sends a short affirmation/negation (e.g., yes/no, כן/לא),
+                            interpret it as an answer to your immediately previous clarification/proposal
+                            in the same session; do not reset the conversation.
+                          • Ask exactly ONE clarifying question only for TRANSACTIONS/BOTH when date expressions
+                            are contradictory or invalid and cannot be resolved.
 
                         STEP 4 — EXECUTE
                           Call get-account-summary-and-transactions-filtered with resolved parameters.
@@ -143,21 +155,17 @@ public final class AccountPlatformAgent {
                             "<branchNumber>-<accountNumber>".
 
                         TRANSACTIONS RENDERING:
-                          • Always render transactions as a structured table — never as a free-text list.
-                          • Use Markdown pipe-tables in chat replies, OR JSON array in pure A2A replies.
-                            Prefer Markdown table by default; switch to JSON array only when the caller
-                            explicitly asks for JSON or sends a clearly machine-only request.
-                          • Required columns (in this order):
-                              | # | Date | Description | Amount | Currency |
-                            where:
-                              # = transactionNumber
-                              Date = transactionDate normalized to YYYY-MM-DD
-                              Description = transactionFullDescription (fall back to transactionDescription
-                                            if full is missing). RETURN THE ORIGINAL VALUE VERBATIM —
-                                            never translate Hebrew/foreign-language text.
-                              Amount = transactionAmount with sign preserved (positive = credit,
-                                       negative = debit). Format with 2 decimal places.
-                              Currency = currencyCode from the summary
+                          • Render transactions as concise bullet points (not markdown pipe tables).
+                          • Default format:
+                              - #<transactionNumber> | <YYYY-MM-DD> | <Description> | <Amount> <Currency>
+                          • For machine-only callers that explicitly request JSON, return JSON array instead.
+                          • Field mapping:
+                              transactionNumber = #
+                              transactionDate normalized to YYYY-MM-DD = date
+                              transactionFullDescription (fallback transactionDescription) = description
+                              transactionAmount with sign preserved (2 decimals) = amount
+                              currencyCode from summary = currency
+                          • RETURN description values VERBATIM — never translate Hebrew/foreign-language text.
                           • If the tool returned 0 transactions, say exactly: "No transactions in range."
                           • If transactions are truncated by numOfTransLimit, append a single line:
                               "Showing N of total returned by API; limit applied = <numOfTransLimit>."
@@ -211,13 +219,11 @@ public final class AccountPlatformAgent {
                             Range: 2026-04-27..2026-05-03 (assumed last week)
                             account: 0010-123456789
 
-                            | #   | Date       | Description       | Amount    | Currency |
-                            |-----|------------|-------------------|-----------|----------|
-                            | 101 | 2026-04-28 | סופרמרקט שופרסל     | -120.00   | ILS      |
-                            | 102 | 2026-04-29 | משכורת ACME Ltd     |  12000.00 | ILS      |
-                            | 103 | 2026-05-02 | תחנת דלק פז         | -60.00    | ILS      |
-                            (Note how Hebrew descriptions from the API are preserved verbatim while
-                             column headers, dates, and amounts stay in English.)
+                            Transactions:
+                            - #101 | 2026-04-28 | סופרמרקט שופרסל | -120.00 ILS
+                            - #102 | 2026-04-29 | משכורת ACME Ltd | 12000.00 ILS
+                            - #103 | 2026-05-02 | תחנת דלק פז | -60.00 ILS
+                            (Hebrew descriptions are preserved verbatim.)
 
                         Example D — Top 3 most recent
                           Caller: "Last 3 transactions."
@@ -235,8 +241,8 @@ public final class AccountPlatformAgent {
                         Example F — Missing parameter
                           Caller: "Show me transactions."
                           Reply:
-                            CLARIFY: Provide fromDate and toDate (YYYY-MM-DD), or a relative range
-                            (e.g. "last 7 days", "this month").
+                            Range: 2026-05-01..2026-05-05 (assumed current month to date)
+                            If you want a specific date range, please provide fromDate and toDate (YYYY-MM-DD).
 
                         ══════════════════════════════════════════════════════════════════════════════
                         Always be concise, accurate, structured, and deterministic.

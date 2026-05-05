@@ -41,11 +41,11 @@ public class AccountSummaryAndTransactionsFilteredToolService {
                     Use this tool to retrieve current-account summary with filtered transactions for the authenticated customer.
                     Uses request context headers (Authorization, transaction/language/client headers).
                     Transaction date fields (transactionDate, transactionBusinessDate) are returned in YYYYMMDD format.
-                    fromDate and toDate are optional. If omitted, both default to today.
+                    fromDate and toDate are optional. If both are omitted, defaults to current month start through today.
                     """)
     public CurrentAccountSummaryAndTransactionsResponse getAccountSummaryAndTransactionsFiltered(
-            @Schema(description = "Inclusive start date in YYYY-MM-DD format (optional, defaults to today)", optional = true) String fromDate,
-            @Schema(description = "Inclusive end date in YYYY-MM-DD format (optional, defaults to today)", optional = true) String toDate,
+            @Schema(description = "Inclusive start date in YYYY-MM-DD format (optional; if both dates omitted defaults to first day of current month)", optional = true) String fromDate,
+            @Schema(description = "Inclusive end date in YYYY-MM-DD format (optional; if both dates omitted defaults to today)", optional = true) String toDate,
             @Schema(
                             description =
                                     "Max transactions to return; 0 returns summary only (no transactions), null returns all transactions (up to 30)",
@@ -64,9 +64,8 @@ public class AccountSummaryAndTransactionsFilteredToolService {
         String resolvedFromDate = (fromDate == null || fromDate.isBlank()) ? null : fromDate.trim();
         String resolvedToDate = (toDate == null || toDate.isBlank()) ? null : toDate.trim();
         if (resolvedFromDate == null && resolvedToDate == null) {
-            String todayIso = today.toString();
-            resolvedFromDate = todayIso;
-            resolvedToDate = todayIso;
+            resolvedFromDate = today.withDayOfMonth(1).toString();
+            resolvedToDate = today.toString();
         } else if (resolvedFromDate == null) {
             resolvedFromDate = resolvedToDate;
         } else if (resolvedToDate == null) {
