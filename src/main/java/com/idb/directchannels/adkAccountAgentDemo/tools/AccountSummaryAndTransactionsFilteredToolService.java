@@ -80,24 +80,29 @@ public class AccountSummaryAndTransactionsFilteredToolService {
         String accountNumber = JwtUtils.getAccountNumber(requestContext.authorization());
 
         try {
-            CurrentAccountSummaryAndTransactionsResponse response = restClient.get()
-                    .uri(uriBuilder -> {
-                        var builder = uriBuilder
-                                .path(endpoint)
-                                .queryParam("fromDate", finalFromDate)
-                                .queryParam("toDate", finalToDate);
-                        if (numOfTransLimit != null) {
-                            builder.queryParam("numOfTransLimit", numOfTransLimit);
-                        }
-                        return builder.build();
-                    })
-                    .header(HttpHeaders.AUTHORIZATION, requestContext.authorization())
-                    .header("X-Global-Transaction-ID", requestContext.globalTransactionId())
-                    .header("Accept-Language", requestContext.acceptLanguage())
-                    .header("clientOS", requestContext.clientOS())
-                    .header("clientVersion", requestContext.clientVersion())
-                    .retrieve()
-                    .body(CurrentAccountSummaryAndTransactionsResponse.class);
+            String uriTemplate = endpoint + "?fromDate={fromDate}&toDate={toDate}";
+            if (numOfTransLimit != null) {
+                uriTemplate += "&numOfTransLimit={numOfTransLimit}";
+            }
+            CurrentAccountSummaryAndTransactionsResponse response = numOfTransLimit != null
+                    ? restClient.get()
+                            .uri(uriTemplate, finalFromDate, finalToDate, numOfTransLimit)
+                            .header(HttpHeaders.AUTHORIZATION, requestContext.authorization())
+                            .header("X-Global-Transaction-ID", requestContext.globalTransactionId())
+                            .header("Accept-Language", requestContext.acceptLanguage())
+                            .header("clientOS", requestContext.clientOS())
+                            .header("clientVersion", requestContext.clientVersion())
+                            .retrieve()
+                            .body(CurrentAccountSummaryAndTransactionsResponse.class)
+                    : restClient.get()
+                            .uri(uriTemplate, finalFromDate, finalToDate)
+                            .header(HttpHeaders.AUTHORIZATION, requestContext.authorization())
+                            .header("X-Global-Transaction-ID", requestContext.globalTransactionId())
+                            .header("Accept-Language", requestContext.acceptLanguage())
+                            .header("clientOS", requestContext.clientOS())
+                            .header("clientVersion", requestContext.clientVersion())
+                            .retrieve()
+                            .body(CurrentAccountSummaryAndTransactionsResponse.class);
             return enrichWithDerivedAccountData(response, branchNumber, accountNumber);
         } catch (RestClientResponseException ex) {
             throw new RuntimeException(
