@@ -1,0 +1,9 @@
+package com.idb.directchannels.adkAccountAgentDemo.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record CurrentAccountSummaryAndTransactionsResponse(
+        @JsonProperty("currentAccountSummary") CurrentAccountSummary currentAccountSummary) {
+}

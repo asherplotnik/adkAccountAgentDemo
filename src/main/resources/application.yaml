@@ -1,0 +1,19 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: adkAccountAgentDemo
+  ai:
+    google:
+      genai:
+        api-key: E9C477BF-3822-4DA1-A583-5E2BF385BB0B
+        base-url: https://ai-connector-platform-630744526491.me-west1.run.app/api/connectors/692469eb22900d0754bc1cbe/v1/projects/me-sb-dgcp-dpoc-pocyosh-pr/locations/europe-west1/publishers/google
+        chat:
+          options:
+            model: gemini-2.5-flash
+
+banking:
+  tools:
+    current-account:
+      base-url: http://localhost:3000
