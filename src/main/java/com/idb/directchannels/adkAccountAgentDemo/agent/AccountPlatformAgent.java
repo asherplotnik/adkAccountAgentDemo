@@ -239,6 +239,7 @@ public final class AccountPlatformAgent {
                         Always be concise, accurate, structured, and deterministic.
                         """
                                 .trim())
+                .model(accountPlatformGemini)
                 .tools(FunctionTool.create(
                         accountSummaryAndTransactionsFilteredToolService,
                         "getAccountSummaryAndTransactionsFiltered"))
