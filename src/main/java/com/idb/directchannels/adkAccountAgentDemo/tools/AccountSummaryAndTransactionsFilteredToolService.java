@@ -1,5 +1,7 @@
 package com.idb.directchannels.adkAccountAgentDemo.tools;
 
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
@@ -39,10 +41,11 @@ public class AccountSummaryAndTransactionsFilteredToolService {
                     Use this tool to retrieve current-account summary with filtered transactions for the authenticated customer.
                     Uses request context headers (Authorization, transaction/language/client headers).
                     Transaction date fields (transactionDate, transactionBusinessDate) are returned in YYYYMMDD format.
+                    fromDate and toDate are optional. If omitted, both default to today.
                     """)
     public CurrentAccountSummaryAndTransactionsResponse getAccountSummaryAndTransactionsFiltered(
-            @Schema(description = "Inclusive start date in YYYY-MM-DD format") String fromDate,
-            @Schema(description = "Inclusive end date in YYYY-MM-DD format") String toDate,
+            @Schema(description = "Inclusive start date in YYYY-MM-DD format (optional, defaults to today)", optional = true) String fromDate,
+            @Schema(description = "Inclusive end date in YYYY-MM-DD format (optional, defaults to today)", optional = true) String toDate,
             @Schema(
                             description =
                                     "Max transactions to return; 0 returns summary only (no transactions), null returns all transactions (up to 30)",
@@ -57,17 +60,37 @@ public class AccountSummaryAndTransactionsFilteredToolService {
                 requestContext.sessionId(),
                 requestContext.globalTransactionId());
 
+        LocalDate today = LocalDate.now();
+        String resolvedFromDate = (fromDate == null || fromDate.isBlank()) ? null : fromDate.trim();
+        String resolvedToDate = (toDate == null || toDate.isBlank()) ? null : toDate.trim();
+        if (resolvedFromDate == null && resolvedToDate == null) {
+            String todayIso = today.toString();
+            resolvedFromDate = todayIso;
+            resolvedToDate = todayIso;
+        } else if (resolvedFromDate == null) {
+            resolvedFromDate = resolvedToDate;
+        } else if (resolvedToDate == null) {
+            resolvedToDate = resolvedFromDate;
+        }
+        final String finalFromDate = resolvedFromDate;
+        final String finalToDate = resolvedToDate;
+
         String endpoint = currentAccountBaseUrl + "/api/v1/currentAccount/currentAccountSummaryFiltered";
         String branchNumber = JwtUtils.getBranchNumber(requestContext.authorization());
         String accountNumber = JwtUtils.getAccountNumber(requestContext.authorization());
 
         try {
             CurrentAccountSummaryAndTransactionsResponse response = restClient.get()
-                    .uri(
-                            endpoint + "?fromDate={fromDate}&toDate={toDate}&numOfTransLimit={numOfTransLimit}",
-                            fromDate,
-                            toDate,
-                            numOfTransLimit)
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder
+                                .path(endpoint)
+                                .queryParam("fromDate", finalFromDate)
+                                .queryParam("toDate", finalToDate);
+                        if (numOfTransLimit != null) {
+                            builder.queryParam("numOfTransLimit", numOfTransLimit);
+                        }
+                        return builder.build();
+                    })
                     .header(HttpHeaders.AUTHORIZATION, requestContext.authorization())
                     .header("X-Global-Transaction-ID", requestContext.globalTransactionId())
                     .header("Accept-Language", requestContext.acceptLanguage())

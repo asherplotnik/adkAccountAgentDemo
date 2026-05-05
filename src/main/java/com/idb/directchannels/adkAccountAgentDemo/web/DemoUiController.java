@@ -85,11 +85,11 @@ public class DemoUiController {
                 "tags", List.of("a2a", "banking", "current-account", "read-only"),
                 "toolContract", Map.of(
                         "name", "get-account-summary-and-transactions-filtered",
-                        "requiredParameters", List.of("fromDate", "toDate"),
-                        "optionalParameters", List.of("numOfTransLimit"),
+                        "requiredParameters", List.of(),
+                        "optionalParameters", List.of("fromDate", "toDate", "numOfTransLimit"),
                         "parameterSemantics", Map.of(
-                                "fromDate", "inclusive, YYYY-MM-DD",
-                                "toDate", "inclusive, YYYY-MM-DD",
+                                "fromDate", "inclusive, YYYY-MM-DD; optional, defaults to today",
+                                "toDate", "inclusive, YYYY-MM-DD; optional, defaults to today",
                                 "numOfTransLimit", "0=summary only, null=all up to 30, N>0=limit N"),
                         "responseNotes", List.of(
                                 "Use availableBalance as default balance answer unless both are explicitly requested",

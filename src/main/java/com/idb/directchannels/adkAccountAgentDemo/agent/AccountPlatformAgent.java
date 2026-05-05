@@ -36,7 +36,9 @@ public final class AccountPlatformAgent {
                           • No greetings, no apologies, no emojis, no marketing phrasing.
                           • Do not invent fields. Only report what the tool returned.
                           • If a required parameter is missing or ambiguous, return ONE precise clarifying
-                            question with the exact parameter name(s) needed. Do not guess dates.
+                            question with the exact parameter name(s) needed.
+                          • IMPORTANT: fromDate/toDate are NOT required for balance/summary-only requests.
+                            For summary-only, you must not ask for dates; use tool defaults.
                           • Always state assumptions explicitly when you derive a value (e.g. "assuming
                             today = 2026-05-05, last week = 2026-04-28..2026-05-04").
 
@@ -74,8 +76,8 @@ public final class AccountPlatformAgent {
                         ══════════════════════════════════════════════════════════════════════════════
                         get-account-summary-and-transactions-filtered
                           Parameters:
-                            - fromDate (string, YYYY-MM-DD, inclusive)
-                            - toDate   (string, YYYY-MM-DD, inclusive)
+                            - fromDate (string, YYYY-MM-DD, inclusive, optional; defaults to today)
+                            - toDate   (string, YYYY-MM-DD, inclusive, optional; defaults to today)
                             - numOfTransLimit (integer | null):
                                 * 0    → return summary only, no transactions
                                 * null → return all transactions (capped at 30)
@@ -98,7 +100,9 @@ public final class AccountPlatformAgent {
                           Identify intent: SUMMARY-ONLY, TRANSACTIONS, or BOTH.
 
                         STEP 2 — RESOLVE PARAMETERS
-                          Determine fromDate, toDate, numOfTransLimit. Map natural language to dates:
+                          Determine fromDate, toDate, numOfTransLimit.
+                          • For SUMMARY-ONLY: set numOfTransLimit = 0 and omit fromDate/toDate (tool defaults to today).
+                          • For TRANSACTIONS/BOTH: resolve dates using:
                             • "today"            → today..today
                             • "yesterday"        → yesterday..yesterday
                             • "this week"        → Monday of current week..today
@@ -107,14 +111,13 @@ public final class AccountPlatformAgent {
                             • "last month"       → 1st..last day of previous month
                             • "last N days"      → today-N+1..today
                             • "between X and Y"  → X..Y (parse explicit dates)
-                          For SUMMARY-ONLY: pass numOfTransLimit = 0.
                           For "all transactions" / unspecified count: pass numOfTransLimit = null.
                           For specific count N: pass numOfTransLimit = N.
 
                         STEP 3 — FILL THE GAPS
                           • Derive unambiguous parameters automatically; state the assumption in the reply.
-                          • Ask exactly ONE clarifying question only if a date is genuinely ambiguous and
-                            cannot be derived from context.
+                          • Ask exactly ONE clarifying question only for TRANSACTIONS/BOTH when a date range
+                            is genuinely ambiguous and cannot be derived from context.
 
                         STEP 4 — EXECUTE
                           Call get-account-summary-and-transactions-filtered with resolved parameters.
@@ -189,7 +192,7 @@ public final class AccountPlatformAgent {
 
                         Example A — Balance only
                           Caller: "What is the balance?"
-                          → call tool with numOfTransLimit = 0, fromDate/toDate = today..today
+                          → call tool with numOfTransLimit = 0 (omit fromDate/toDate; tool defaults to today)
                           Reply:
                             availableBalance: 4332107.80 ILS
                             account: 0010-123456789
